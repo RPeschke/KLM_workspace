@@ -155,69 +155,70 @@ void processBuffer(const unsigned char* buff,const long size, const char* wavefo
 
 
         //----CONVERT DATA FROM 8-BIT BUFFER TO 32-BIT BUFFER----//
-        if ((buff[pos1]==0xFE && buff[pos1+4]==0xCF && (buff[pos1+8]&0xF0)==0xD0)) { // We do have a package.
-           
-            int wbuflen= CONVERT_DATA_FROM_8_BIT_BUFFER_TO_32_BIT_BUFFER( buff,pos1,pos2,buffer_uint);
+        if (!(buff[pos1]==0xFE && buff[pos1+4]==0xCF && (buff[pos1+8]&0xF0)==0xD0)) { // We dont have a package.
+           continue;
+        }
+        int wbuflen= CONVERT_DATA_FROM_8_BIT_BUFFER_TO_32_BIT_BUFFER( buff,pos1,pos2,buffer_uint);
     
     
-            PRINT_PSEUDO_STATUS_BAR_TO_TERMINAL(eventCounter);
+        PRINT_PSEUDO_STATUS_BAR_TO_TERMINAL(eventCounter);
             
             
 
-            //----FOR EACH 32-bit WORD, EXTRACT DATA USING BIT-WISE & OPERATORS----//
-            evt.AddNum     =   (buffer_uint[0])      & 0x000001FF ;   // word #0: read 5 bits
-            evt.WrAddNum   =   (buffer_uint[0]>>9)   & 0x000001FF ;   // word #0: read 5 bits
-            evt.ASIC       =  ((buffer_uint[0]>>20)  & 0x0000000F)-1; // word #0: read 4 bits
-            evt.EvtNum     =   (buffer_uint[1])      & 0x00FFFFFF ;   // word #1: read 24 bits
-            evt.Wctime     =   (buffer_uint[2])      & 0x0FFFFFFF ;   // word #2: read 28 bits
+        //----FOR EACH 32-bit WORD, EXTRACT DATA USING BIT-WISE & OPERATORS----//
+        evt.AddNum     =   (buffer_uint[0])      & 0x000001FF ;   // word #0: read 5 bits
+        evt.WrAddNum   =   (buffer_uint[0]>>9)   & 0x000001FF ;   // word #0: read 5 bits
+        evt.ASIC       =  ((buffer_uint[0]>>20)  & 0x0000000F)-1; // word #0: read 4 bits
+        evt.EvtNum     =   (buffer_uint[1])      & 0x00FFFFFF ;   // word #1: read 24 bits
+        evt.Wctime     =   (buffer_uint[2])      & 0x0FFFFFFF ;   // word #2: read 28 bits
 
-            //----PARSE UINT32 BUFFER & STORE DATA AS INSTANCE OF MBevent CLASS----//
+        //----PARSE UINT32 BUFFER & STORE DATA AS INSTANCE OF MBevent CLASS----//
 
-            int count       = 0;
-            const int offset     = 3;
-            int sampNum     = -1;
-            int chanNum     = -1;
-            int window      = -1;
-
-
-
-            //----LOOP OVER CURRENT PACKAGE AND EXTRACT DATA----//
-            while (count < wbuflen) {
-                chanNum    = (buffer_uint[offset+count]>>19) & 0x0000000F; // word #3 & up: read 4 bits
-                window     = (buffer_uint[offset+count]>>17) & 0x00000003; // word #3 & up: read 2 bits
+        int count       = 0;
+        const int offset     = 3;
+        int sampNum     = -1;
+        int chanNum     = -1;
+        int window      = -1;
 
 
-                //----CHECK FOR SAMPLE -- INDICATED BY "BD" VALUE----//
-                // current usage is 31 bits
-                if ((buffer_uint[offset+count] & 0xFF000000) == 0xBD000000) {
-                    sampNum     = ((buffer_uint[offset+count]>>12) & 0x0000001F)+window*32; // word #3 & up: read 5 bits
-                    int BDval   =  (buffer_uint[offset+count]>>24) & 0x000000FF; // word #3 & up: read 8 bits (top 8 bits)
-                    // make sure info is still valid before extracting samples---must pass these four conditions
-                    if (evt.AddNum >= MEMORY_DEPTH  || evt.ASIC > NASICS || sampNum >= NSAMP || BDval != 0xBD) {
-                        cout << "INVALID SAMPLE INFO, SKIPPING "    << "\n"
-                             << "Loop counter: "    << count        << "\n"
-                             << "Address number: "  << evt.AddNum  << "\n"
-                             << "ASIC number: "     << evt.ASIC    << "\n"
-                             << "Sample number: "   << sampNum      << "\n"
-                             << "BD value: "        << BDval        << "\n";
-                        count++;
-                        continue;
-                    }
-                    else {
-                        evt.Sample[chanNum][sampNum] = ((buffer_uint[offset+count]) & 0x00000FFF); // word #3 & up: read 12 bits (bottom 12 bits)
-                    }
+
+        //----LOOP OVER CURRENT PACKAGE AND EXTRACT DATA----//
+        while (count < wbuflen) {
+            chanNum    = (buffer_uint[offset+count]>>19) & 0x0000000F; // word #3 & up: read 4 bits
+            window     = (buffer_uint[offset+count]>>17) & 0x00000003; // word #3 & up: read 2 bits
+
+
+            //----CHECK FOR SAMPLE -- INDICATED BY "BD" VALUE----//
+            // current usage is 31 bits
+            if ((buffer_uint[offset+count] & 0xFF000000) == 0xBD000000) {
+                sampNum     = ((buffer_uint[offset+count]>>12) & 0x0000001F)+window*32; // word #3 & up: read 5 bits
+                int BDval   =  (buffer_uint[offset+count]>>24) & 0x000000FF; // word #3 & up: read 8 bits (top 8 bits)
+                // make sure info is still valid before extracting samples---must pass these four conditions
+                if (evt.AddNum >= MEMORY_DEPTH  || evt.ASIC > NASICS || sampNum >= NSAMP || BDval != 0xBD) {
+                    cout << "INVALID SAMPLE INFO, SKIPPING "    << "\n"
+                         << "Loop counter: "    << count        << "\n"
+                         << "Address number: "  << evt.AddNum  << "\n"
+                         << "ASIC number: "     << evt.ASIC    << "\n"
+                         << "Sample number: "   << sampNum      << "\n"
+                         << "BD value: "        << BDval        << "\n";
+                    count++;
+                    continue;
                 }
+                else {
+                    evt.Sample[chanNum][sampNum] = ((buffer_uint[offset+count]) & 0x00000FFF); // word #3 & up: read 12 bits (bottom 12 bits)
+                }
+            }
 
 
 
-                CHECK_FOR_FEATURE_EXTRACTION(buffer_uint,offset,count,evt);
+            CHECK_FOR_FEATURE_EXTRACTION(buffer_uint,offset,count,evt);
 
 
 
-                //----CHECK FOR TRIGGER BITS -- INDICATED BY "CA" WORD FOLLOWED BY "C7" WORD----//
-                const int n_ca_max=32; // total of 64 hex words, 32 each of "CAXXXXXX" and "C7XXXXXX"
-                int n_ca                         = 0;
-                unsigned int CA_val[n_ca_max]    = {0};
+            //----CHECK FOR TRIGGER BITS -- INDICATED BY "CA" WORD FOLLOWED BY "C7" WORD----//
+            const int n_ca_max=32; // total of 64 hex words, 32 each of "CAXXXXXX" and "C7XXXXXX"
+            int n_ca                         = 0;
+            unsigned int CA_val[n_ca_max]    = {0};
                 unsigned int CA_raw1[n_ca_max]   = {0};
                 unsigned int CA_raw2[n_ca_max]   = {0};
                 unsigned int CA_win[n_ca_max]    = {0};
@@ -254,7 +255,7 @@ void processBuffer(const unsigned char* buff,const long size, const char* wavefo
             //----WRITE PARSED PACKAGE TO FILE (ONE LINE PER EVENT)----//
             outfile << evt;
             eventCounter++;
-        }//END OF PACKAGE
+       
     }//END OF ALL PACKAGES
     cout << "<---" << eventCounter-1 << "\n";
     
