@@ -106,7 +106,7 @@ void processBuffer(const unsigned char* buff,const long size, const char* wavefo
             int wordNum=0;
             int posRead=0;
             while (
-                (pos1<pos2)  & !end_of_package_marker(buff,pos1)) {
+                (pos1<pos2)  && !end_of_package_marker(buff,pos1)) {
                 if (posRead%4==0) { // Fill waveform buffer.
                     buffer_uint[wordNum]=((unsigned int)buff[pos1+0])<<24 | ((unsigned int)buff[pos1+1])<<16 | ((unsigned int)buff[pos1+2])<<8 | ((unsigned int)buff[pos1+3]);
                     wordNum++;
