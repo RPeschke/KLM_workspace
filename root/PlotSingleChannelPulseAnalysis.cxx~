@@ -1,0 +1,126 @@
+void PlotSingleChannelPulseAnalysis(const char* root_file, int chNo, int mV) {
+  gROOT->Reset();
+  // declare tree variables
+  Int_t EvtNum, AddNum,  WrAddNum;
+  Int_t Wctime, ASIC, PeakTime[16];
+  Float_t PeakVal[16], Sample[16][128];
+  Float_t PartialRiemannSum[16], RiemannSum[16], RiemannSumSq[16];
+  Float_t SampNum[128], ChSample[128], ToverTh[16];
+
+  TFile* file = new TFile(root_file,"READ");
+  TTree* tree = (TTree*)file->Get("tree");
+  TCanvas* canvas1 = new TCanvas("canvas1", "Test Canvas", 1000, 1000);
+  canvas1->Divide(2, 2); // make 4 pads per canvas
+
+  tree->SetBranchAddress("EvtNum", &EvtNum);
+  tree->SetBranchAddress("AddNum", &AddNum);
+  tree->SetBranchAddress("WrAddNum", &WrAddNum);
+  tree->SetBranchAddress("Wctime", &Wctime);
+  tree->SetBranchAddress("ASIC", &ASIC);
+  tree->SetBranchAddress("PeakTime", PeakTime);
+  tree->SetBranchAddress("PeakVal", PeakVal);
+  tree->SetBranchAddress("PartialRiemannSum", PartialRiemannSum);
+  tree->SetBranchAddress("RiemannSum", RiemannSum);
+  tree->SetBranchAddress("RiemannSumSq", RiemannSumSq);
+  tree->SetBranchAddress("TimeOverThresh", ToverTh);
+  tree->SetBranchAddress("ADC_counts", Sample);
+
+  
+
+  TMultiGraph* mg = new TMultiGraph();
+  for (int i=0; i<128; i++) SampNum[i] = (float)i;
+
+  tree->GetEntry(0); for(int j=0; j<128; j++) ChSample[j] = Sample[chNo][j];
+  TGraph* gr1 = new TGraph(128, SampNum, ChSample);
+  gr1->SetMarkerColor(1); gr1->SetTitle("1"); gr1->SetMarkerStyle(20); mg->Add(gr1);
+
+  tree->GetEntry(1); for(int j=0; j<128; j++) ChSample[j] = Sample[chNo][j];
+  TGraph* gr2 = new TGraph(128, SampNum, ChSample);
+  gr2->SetMarkerColorAlpha(2, .3); gr2->SetTitle("2"); gr2->SetMarkerStyle(7); mg->Add(gr2);
+
+  tree->GetEntry(2); for(int j=0; j<128; j++) ChSample[j] = Sample[chNo][j];
+  TGraph* gr3 = new TGraph(128, SampNum, ChSample);
+  gr3->SetMarkerColorAlpha(3, .3); gr3->SetTitle("3"); gr3->SetMarkerStyle(7); mg->Add(gr3);
+
+  tree->GetEntry(3); for(int j=0; j<128; j++) ChSample[j] = Sample[chNo][j];
+  TGraph* gr4 = new TGraph(128, SampNum, ChSample);
+  gr4->SetMarkerColorAlpha(4, .3); gr4->SetTitle("4"); gr4->SetMarkerStyle(7); mg->Add(gr4);
+
+  canvas1->cd(1);
+  mg->Draw("ap");
+
+  char xlabel[18];
+  sprintf(xlabel, "Ch_%d Sample No.", chNo);
+  mg->SetTitle("First 4 Events");
+  mg->GetXaxis()->SetTitle(xlabel);
+  mg->GetYaxis()->SetTitleOffset(1.5);
+  mg->GetYaxis()->SetTitle("ADC Counts");
+  mg->SetMaximum(700);
+  mg->SetMinimum(-300);
+
+  TF1 *f0 = new TF1("f0", "gaus");
+
+  TH1F* h2 = new TH1F("", "Riemann Sum", 300, -6000, 6000);
+  TH1F* h3 = new TH1F("", "Sum of Squares", 300, 0, 6000000);
+  TH1F* h4 = new TH1F("", "Partial Riemann Sum", 300, 0, 12000);
+  TH1I* h5 = new TH1I("","Window Count Between Triggers", 512, 0, 511);
+  TH1F* h6 = new TH1F("","Peak Value", 300, 0, 900);
+
+  int numEnt = tree->GetEntriesFast();
+  int winNum[numEnt], deltaWin;
+  for(int e=0; e<numEnt; e++) {
+    tree->GetEntry(e);
+    h2->Fill(RiemannSum[chNo]);
+    h3->Fill(RiemannSumSq[chNo]);
+    h4->Fill(PartialRiemannSum[chNo]);
+    h6->Fill(PeakVal[chNo]);
+    winNum[e] = AddNum;
+  }
+
+  Double_t AvgSum, dAvgSum, AvgSumSigma, DAvgSumSigma;
+
+  h2->Fit("f0", "FS", "SAMES");
+  AvgSum  = f0->GetParameter(0); dAvgSum  = f0->GetParError(0);
+  AvgSumSigma = f0->GetParameter(1); dAvgSumSigma = f0->GetParError(1);
+  h2->GetFunction("f0")->SetLineColor(1);
+
+
+  canvas1->cd(2); h2->Draw();
+  canvas1->cd(3); h3->Draw();
+  canvas1->cd(4); h4->Draw();
+  canvas1->Print("test.pdf(");
+  canvas1->Clear();
+  canvas1->Divide(1,2);
+
+  for(int e=1; e<numEnt; e++) {
+    deltaWin = (winNum[e]-winNum[e-1]+512)%512;
+    h5->Fill(deltaWin);
+  }
+  canvas1->cd(1); h5->Draw();
+  canvas1->cd(2); h6->Draw();
+  canvas1->Print("test.pdf)");
+
+  // Write fit results to new TTree
+  TFile* results = new TFile("PulseAnalysis.root", "UPDATE");
+  TTree* tree1;
+  if (results->Get("tree")){
+    tree1 = (TTree*)results->Get("tree");
+    tree1->SetBranchAddress("AvgSum", &AvgSum);
+  }
+  else {
+    tree1 = new TTree("tree", "Results of pulse test");
+    tree1->Branch("AvgSum", &AvgSum, "AvgSum/D");
+  }
+  tree1->Fill();
+  tree1->Write("tree", TObject::kWriteDelete);
+}
+
+
+
+
+
+
+
+
+
+

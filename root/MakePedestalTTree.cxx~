@@ -1,0 +1,87 @@
+#include "Riostream.h"
+
+void MakePedestalTTree(const char* ascii_input, const char* root_output, const float NoAvg) {
+  gROOT->Reset();
+  std::ifstream infile;
+  infile.open(ascii_input);
+  //ifstream::open looks for a pointer, so no dereferencing required.
+  Int_t EvtNum, AddNum,  WrAddNum;
+  Int_t Wctime, ASIC, pedWin;
+  Int_t PeakTime[16], PeakVal[16];
+  Float_t Sample, PedSample[16][512][32];
+  for (int i=0; i<16; i++) {
+    for (int j=0; j<512; j++){
+      for (int k=0; k<32; k++) {
+        PedSample[i][j][k] = 0;
+      }
+    }
+  }
+
+  TFile* file = new TFile(root_output,"UPDATE");
+  TTree* tree;
+  if (file->Get("pedTree")){
+    cout << "found TTree\n";
+    tree = (TTree*)file->Get("pedTree");
+    tree->SetBranchAddress("PedSample", PedSample);
+    tree->GetEntry(0);
+  }
+  else {
+    cout << "making new TTree\n";
+    tree = new TTree("pedTree", "TargetX Pedestal Data");
+    tree->Branch("PedSample", PedSample, "PedSample[16][512][32]/F");
+  }
+
+cout << PedSample[1][2][3];
+  Int_t nlines = 0;
+  while (1) { // loops intil break is reached
+    infile >>      EvtNum;
+    infile >>      AddNum;
+    if (!infile.good()) break;
+    if (AddNum != (nlines*4)%512){
+      printf("\nUnanticipated window number.\nAddNum = %d, expected: %d\nExiting!\n\n",AddNum, (nlines*4)%512);
+      exit(-1);
+    }
+    infile >>      WrAddNum;
+    infile >>      Wctime;
+    infile >>      ASIC;
+    if (nlines==13 | nlines==57) cout << "\n\nExample pedestal data: (Window Start = " << AddNum << ")" << "\nCh.\tSamp0\tSamp31\tSamp32\tSamp63\tSamp64\tSamp95\tSamp96\tSamp127";
+    for (int i=0; i<16; i++) {
+      if (nlines==13 | nlines==57) cout << "\n" << i << "\t";
+      infile >>  PeakTime[i];
+      infile >>  PeakVal[i];
+      for (int j=0; j<4; j++){
+        pedWin = (AddNum+j)%512;
+        for (int k=0; k<32; k++){
+        infile >> Sample;
+        PedSample[i][pedWin][k] += Sample/NoAvg;
+        if ((nlines==13 | nlines==57) && (k==0 | k==31)) cout << Sample << "\t";
+        }
+      }
+    }
+    // exit loop when eof, fail, or bad bit from std::ios is set.
+    nlines++;
+  }
+  printf("\n\nsuccessfully read %d lines.\nwriting data to TTree\n",nlines);
+  infile.close();
+cout << PedSample[1][2][3];
+  delete file;
+  TFile* file1 = new TFile(root_output,"RECREATE");
+  TTree* tree1 = new TTree("pedTree", "TargetX Pedestal Data");
+  tree->Branch("PedSample", PedSample, "PedSample[16][512][32]/F");
+
+
+  tree1->Fill();
+  tree1->Write("", TObject::kSingleKey);
+  cout << "Some results:\nASIC = " << ASIC << " and Window = 228\n";// << AddNum << "\n";
+  cout << "\nCh.\tSamp0\tSamp31\tSamp32\tSamp63\tSamp64\tSamp95\tSamp96\tSamp127\n";
+  for (int i=0; i<16; i++) cout << i << "\t"
+         << PedSample[i][228][0] << "\t" 
+         << PedSample[i][228][31] << "\t"
+         << PedSample[i][228][32] << "\t" 
+         << PedSample[i][228][63] << "\t"
+         << PedSample[i][228][64] << "\t" 
+         << PedSample[i][228][95] << "\t"
+         << PedSample[i][228][96] << "\t" 
+         << PedSample[i][228][127] << "\n";
+  file1->Close();
+}

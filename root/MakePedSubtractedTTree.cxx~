@@ -1,0 +1,131 @@
+#include "Riostream.h"
+
+void MakePedSubtractedTTree(const char* ascii_input, const char* ped_file, const char* root_output) {
+// note, ifstream::open, TFile, and TTree are all
+// looking for a pointer, so no dereferencing required.
+  gROOT->Reset();
+  std::ifstream infile;
+  infile.open(ascii_input);
+
+  Int_t EvtNum, AddNum, WrAddNum, Wctime, ASIC;
+  Int_t garf1, garf2, pedWin, maxSaNo;
+  Int_t PeakTime[16];
+  Float_t maxSa, s, sl, sr;
+  Float_t RawSample[32], PeakVal[16], RiemannSum[16], ToverTh[16];
+  Float_t Sample[16][128], PedSample[16][512][32];
+
+  TFile* pedFile = new TFile(ped_file,"READ");      // File order matters:
+  TTree* pedTree = (TTree*)pedFile->Get("pedTree"); // get pedestal file and data first
+  pedTree->SetBranchAddress("PedSample", PedSample);// use "gDirectory->pwd();" to see!
+  pedTree->GetEntry(0);
+
+  //write data to existing or new TTree
+  TFile* file = new TFile(root_output,"UPDATE");
+  TTree* tree;
+  if (file->Get("tree")){
+    tree = (TTree*)file->Get("tree");
+    tree->SetBranchAddress("EvtNum", &EvtNum);
+    tree->SetBranchAddress("AddNum", &AddNum);
+    tree->SetBranchAddress("WrAddNum", &WrAddNum);
+    tree->SetBranchAddress("Wctime", &Wctime);
+    tree->SetBranchAddress("ASIC", &ASIC);
+    tree->SetBranchAddress("PeakTime", PeakTime);
+    tree->SetBranchAddress("PeakVal", PeakVal);
+    tree->SetBranchAddress("RiemannSum", RiemannSum);
+    tree->SetBranchAddress("TimeOverThresh", ToverTh);
+    tree->SetBranchAddress("ADC_counts", Sample);
+  }
+  else {
+    tree = new TTree("tree","SciFi tracker output via KLM motherboard");
+    tree->Branch("EvtNum", &EvtNum, "EvtNum/I");
+    tree->Branch("AddNum", &AddNum, "AddNum/I");
+    tree->Branch("WrAddNum", &WrAddNum, "WrAddNum/I");
+    tree->Branch("Wctime", &Wctime, "Wctime/I");
+    tree->Branch("ASIC", &ASIC, "ASIC/I");
+    tree->Branch("PeakTime", PeakTime, "PeakTime[16]/I");
+    tree->Branch("PeakVal", PeakVal, "PeakVal[16]/F");
+    tree->Branch("RiemannSum", RiemannSum, "RiemannSum[16]/F");
+    tree->Branch("TimeOverThresh", ToverTh, "TimeOverThresh[16]/F");
+    tree->Branch("ADC_counts", Sample, "ADC_counts[16][128]/F");
+  }
+
+  Int_t nlines = 0;
+  if (!infile.good()){
+    cout << "Error opening data file\nor file is empty. Exiting . . .\n";
+    exit(-1);
+  }
+  while (1) { // loops intil end break is reached
+    infile >> EvtNum;
+    infile >> AddNum;
+    infile >> WrAddNum;
+    infile >> Wctime;
+    infile >> ASIC;
+    for (int i=0; i<16; i++) {
+      infile >> garf1;//firmware peak time
+      infile >> garf2;//firmware peak value
+
+      for (int j=0; j<4; j++){
+        pedWin = (AddNum+j)%512;
+        //if (i==0) cout << int i=0; i<16;pedWin << "\t";
+        for (int k=0; k<32; k++){
+          infile >> RawSample[k];
+          Sample[i][k+32*j] = PedSample[i][pedWin][k] - RawSample[k];
+          //RiemannSum[i] += PedSample[i][pedWin][k] - RawSample[k];
+        }
+      }
+
+      maxSa=-9999.; maxSaNo = 0;
+      for(int j=1; j<127; j++) { // sample No.
+        sl= Sample[i][j-1];
+        s = Sample[i][j]  ;
+        sr= Sample[i][j+1];
+        if (s>maxSa && (s>=sl) && (s-sl)<50 && (s>=sr) && (s-sr)<50){
+          maxSa = s;
+          maxSaNo = j;
+        }
+      }
+
+      float t1;
+      for(int j=1; j<127; j++) { // sample No.
+        if(j<maxSaNo){
+          sl= Sample[i][j-1];
+          s = Sample[i][j]  ;
+          if (s>(maxSa/3)){
+            t1 = (float)j + (s-sl)/2;
+            j = maxSaNo;
+          }
+        }
+        if(j>maxSaNo){
+          s = Sample[i][j]  ;
+          sr= Sample[i][j+1];
+          if (sr<(maxSa/3)){
+            ToverTh[i] = (float)j + (sr-s)/2 - t1;
+            j = 127;
+          }
+        }
+      }
+
+      PeakVal[i]  = maxSa;
+      PeakTime[i] = maxSaNo;
+
+      RiemannSum[i] = 0.0;
+      if (maxSaNo < 96 && maxSaNo >7){
+        for (int j=(maxSaNo-8); j<=(maxSaNo+32); j++){
+          RiemannSum[i] += Sample[i][j];
+        }
+      }
+
+    }
+    if (!infile.good()) break;
+    tree->Fill();
+    //if (nlines==0) printf("\n%d %d %d %d %d %d %d %f\n", EvtNum, AddNum, WrAddNum, Wctime, ASIC, garf1, garf2, Sample[0][0]);
+    nlines++;
+  }
+  tree->Write("tree", TObject::kWriteDelete);
+
+  printf("Read %d lines.\n",nlines);
+  infile.close();
+
+  delete file;//note: TFile destructor deletes tree object with file!
+  delete pedFile;
+}
