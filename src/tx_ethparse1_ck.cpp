@@ -28,7 +28,6 @@ class MBevent {
     // note: Window information is only allocated 3 bits, so
     //       window number is fully specified by sample number
 
-    ~MBevent() {} // Destructor
     MBevent() {
         EvtNum                                     = -1;
         AddNum                                     = -1;
