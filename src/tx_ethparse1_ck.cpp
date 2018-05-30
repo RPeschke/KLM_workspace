@@ -49,6 +49,10 @@ class MBevent {
 //-----------------------------------------------------//
 void processBuffer(const unsigned char* buff,const long size, const char* waveformOutfile,const char* trigBitOutfile,const int OutMode) {
 
+    if (size<100) {
+        cout << "\n\nWARNING: Packet size only: " << size << " bytes. ---> Skipping packet.\n\n";
+        return;
+    }
 
     ofstream outfile(waveformOutfile, ofstream::out | ofstream::app); // data in form of ascii (8-bit) characters // app opt. writes to end.
 
@@ -66,10 +70,6 @@ void processBuffer(const unsigned char* buff,const long size, const char* wavefo
     int pos2 = 0;
     int eventCounter = 1; // for printing progress to terminal
 
-    if (size<100) {
-        cout << "\n\nWARNING: Packet size only: " << size << " bytes. ---> Skipping packet.\n\n";
-        return;
-    }
 
     while (pos1 < (size-16)) {
 
