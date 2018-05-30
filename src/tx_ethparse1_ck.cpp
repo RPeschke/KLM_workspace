@@ -4,6 +4,8 @@
 #include <sstream>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
+
 
 const int NSAMP         = 32*4;
 const int MEMORY_DEPTH  = 512;
@@ -234,6 +236,24 @@ long   GET_LENGTH_OF_FILE(std::ifstream& infile){
 }
 
 
+std::vector<char> read_file_to_buffer(const char* inFileName){
+    //---- DEFINE INPUT FILE AND PARSING ----//
+    ifstream infile(inFileName, ifstream::in | ifstream::binary); // data in form of ascii (8-bit) characters  // Open file for reading in binary.
+    if (infile.fail()) {
+        cout << "\n\nError opening input file, exiting\n\n";
+        return std::vector<char>();
+    }
+
+
+     //---- READ DATA TO BUFFER ----//
+    std::vector<char> buffer(GET_LENGTH_OF_FILE(infile)); // Declare memory
+  
+    cout << "Reading " << buffer.size() << " bytes... ";
+    infile.read (buffer.data(), buffer.size());
+    if (infile) cout << "all characters read successfully.\n";
+    else cout << "\n\nerror: only " << infile.gcount() << " could be read\n\n";
+    return buffer;
+}
 //--------------------------------------------------------//
 //                  MAIN
 //--------------------------------------------------------//
@@ -260,26 +280,14 @@ int main(int argc, char* argv[]) {
     char* trigBitOutfile  = argv[3];
     int   OutMode         = atoi(argv[4]);
 
-    //---- DEFINE INPUT FILE AND PARSING ----//
-    ifstream infile; // data in form of ascii (8-bit) characters
-    infile.open(inputFileName, ifstream::in | ifstream::binary); // Open file for reading in binary.
-    if (infile.fail()) {
-        cout << "\n\nError opening input file, exiting\n\n";
-        return 0;
+    std::vector<char> buffer = read_file_to_buffer(inputFileName);
+
+    if(buffer.empty()){
+        return -1; // reurn an error code to the command line
     }
+    unsigned char* Ubuff = (unsigned char*)buffer.data(); // point to ascii buffer and cast it as unsigned buffer
+    processBuffer(Ubuff, buffer.size(), waveformOutfile, trigBitOutfile, OutMode);
 
 
-     //---- READ DATA TO BUFFER ----//
-    char* buffer = new char [size_in_bytes]; // Declare memory
-    unsigned char* Ubuff = (unsigned char*)buffer; // point to ascii buffer and cast it as unsigned buffer
-    cout << "Reading " << size_in_bytes << " bytes... ";
-    infile.read (buffer, size_in_bytes);
-    if (infile) cout << "all characters read successfully.\n";
-    else cout << "\n\nerror: only " << infile.gcount() << " could be read\n\n";
-    infile.close();
-
-    processBuffer(Ubuff, size_in_bytes, waveformOutfile, trigBitOutfile, OutMode);
-
-    delete [] buffer; // Clear all memory declared as new.
     return 0;
 }
