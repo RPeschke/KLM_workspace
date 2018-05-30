@@ -105,6 +105,18 @@ void PRINT_PSEUDO_STATUS_BAR_TO_TERMINAL(int eventCounter){
             if (eventCounter%100 == 0) cout << "." << flush;
             if (eventCounter%8000 == 0) cout << "<---" << eventCounter << "\n";
 }
+
+
+//----CHECK FOR FEATURE EXTRACTION --  INDICATED BY "CB" VALUE----//
+void CHECK_FOR_FEATURE_EXTRACTION(unsigned int* buffer_uint, const int offset,const int count, MBevent& evt){
+    if ((buffer_uint[offset+count]& 0xFF000000)==0xCB000000) { // note: current usage is 31 bits
+        int chanNum                 = (0x00F00000 & buffer_uint[offset+count])>>20;
+        evt.PeakTime[chanNum]  = buffer_uint[offset+count]>>12 & 0x7F; // 7 bits for sample number
+        evt.PeakVal[chanNum]   = (buffer_uint[offset+count] & 0x0FFF); // 12 bit ADC count for peak
+    }
+}
+
+
 //-----------------------------------------------------//
 //                   PROCESS BUFFER
 //-----------------------------------------------------//
@@ -152,6 +164,13 @@ void processBuffer(const unsigned char* buff,const long size, const char* wavefo
             
             
 
+            //----FOR EACH 32-bit WORD, EXTRACT DATA USING BIT-WISE & OPERATORS----//
+            evt.AddNum     =   (buffer_uint[0])      & 0x000001FF ;   // word #0: read 5 bits
+            evt.WrAddNum   =   (buffer_uint[0]>>9)   & 0x000001FF ;   // word #0: read 5 bits
+            evt.ASIC       =  ((buffer_uint[0]>>20)  & 0x0000000F)-1; // word #0: read 4 bits
+            evt.EvtNum     =   (buffer_uint[1])      & 0x00FFFFFF ;   // word #1: read 24 bits
+            evt.Wctime     =   (buffer_uint[2])      & 0x0FFFFFFF ;   // word #2: read 28 bits
+
             //----PARSE UINT32 BUFFER & STORE DATA AS INSTANCE OF MBevent CLASS----//
 
             int count       = 0;
@@ -160,12 +179,7 @@ void processBuffer(const unsigned char* buff,const long size, const char* wavefo
             int chanNum     = -1;
             int window      = -1;
 
-            //----FOR EACH 32-bit WORD, EXTRACT DATA USING BIT-WISE & OPERATORS----//
-            evt.AddNum     =   (buffer_uint[0])      & 0x000001FF ;   // word #0: read 5 bits
-            evt.WrAddNum   =   (buffer_uint[0]>>9)   & 0x000001FF ;   // word #0: read 5 bits
-            evt.ASIC       =  ((buffer_uint[0]>>20)  & 0x0000000F)-1; // word #0: read 4 bits
-            evt.EvtNum     =   (buffer_uint[1])      & 0x00FFFFFF ;   // word #1: read 24 bits
-            evt.Wctime     =   (buffer_uint[2])      & 0x0FFFFFFF ;   // word #2: read 28 bits
+
 
             //----LOOP OVER CURRENT PACKAGE AND EXTRACT DATA----//
             while (count < wbuflen) {
@@ -195,12 +209,9 @@ void processBuffer(const unsigned char* buff,const long size, const char* wavefo
                 }
 
 
-                //----CHECK FOR FEATURE EXTRACTION --  INDICATED BY "CB" VALUE----//
-                if ((buffer_uint[offset+count]& 0xFF000000)==0xCB000000) { // note: current usage is 31 bits
-                    chanNum                 = (0x00F00000 & buffer_uint[offset+count])>>20;
-                    evt.PeakTime[chanNum]  = buffer_uint[offset+count]>>12 & 0x7F; // 7 bits for sample number
-                    evt.PeakVal[chanNum]   = (buffer_uint[offset+count] & 0x0FFF); // 12 bit ADC count for peak
-                }
+
+                CHECK_FOR_FEATURE_EXTRACTION(buffer_uint,offset,count,evt);
+
 
 
                 //----CHECK FOR TRIGGER BITS -- INDICATED BY "CA" WORD FOLLOWED BY "C7" WORD----//
