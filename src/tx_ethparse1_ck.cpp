@@ -49,17 +49,11 @@ class MBevent {
 //-----------------------------------------------------//
 void processBuffer( unsigned char* buff, long size, char* waveformOutfile, char* trigBitOutfile, int OutMode) {
 
-    ofstream outfile; // data in form of ascii (8-bit) characters
-//    char waveformOutfile[80];
-//    sprintf(waveformOutfile, "%s/waveformSamples.txt", (char)working_dir);
-    outfile.open(waveformOutfile, ofstream::out | ofstream::app); // app opt. writes to end.
+    ofstream outfile(waveformOutfile, ofstream::out | ofstream::app); // data in form of ascii (8-bit) characters // app opt. writes to end.
 
-    ofstream CAoutfile;
-//    char trigBitOutfile[80];
-//    sprintf(trigBitOutfile, "%s/triggerBits.txt", (char)working_dir);
-    CAoutfile.open(trigBitOutfile, ofstream::out | ofstream::app);
 
     MBevent* evt = new MBevent;
+    ofstream CAoutfile(trigBitOutfile, ofstream::out | ofstream::app);
 
      //---- EXTRACT PACKAGES FROM BUFFER ----//
     unsigned int buffer_uint[65536];
@@ -222,9 +216,8 @@ void processBuffer( unsigned char* buff, long size, char* waveformOutfile, char*
         }//END OF PACKAGE
     }//END OF ALL PACKAGES
     cout << "<---" << eventCounter-1 << "\n";
-    outfile.close();
-    CAoutfile.close();
-    delete evt; // Clear all memory declared as new.
+    
+    
 }//END PROCESS BUFFER
 
 long   GET_LENGTH_OF_FILE(std::ifstream& infile){
