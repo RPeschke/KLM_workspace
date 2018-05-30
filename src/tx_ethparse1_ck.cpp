@@ -26,8 +26,21 @@ class MBevent {
     // note: Window information is only allocated 3 bits, so
     //       window number is fully specified by sample number
 
-    MBevent() {}  // Constructor
     ~MBevent() {} // Destructor
+    MBevent() {
+        EvtNum                                     = -1;
+        AddNum                                     = -1;
+        WrAddNum                                   = -1;
+        Wctime                                     = -1;
+        ASIC                                       = -1;
+        for (int i=0; i<16; i++) PeakVal [i]       = 9999;
+        for (int i=0; i<16; i++) PeakTime [i]      = -1;
+        for (int i=0; i<16; i++) {
+            for (int j=0; j<128; j++) Sample[i][j] = 9999;
+        }
+
+    }  
+
 };
 
 //-----------------------------------------------------//
@@ -45,18 +58,7 @@ void processBuffer( unsigned char* buff, long size, char* waveformOutfile, char*
 //    sprintf(trigBitOutfile, "%s/triggerBits.txt", (char)working_dir);
     CAoutfile.open(trigBitOutfile, ofstream::out | ofstream::app);
 
-    //---- INITIALIZE EVENT PARAMETERS ----//
     MBevent* evt = new MBevent;
-    evt->EvtNum                                     = -1;
-    evt->AddNum                                     = -1;
-    evt->WrAddNum                                   = -1;
-    evt->Wctime                                     = -1;
-    evt->ASIC                                       = -1;
-    for (int i=0; i<16; i++) evt->PeakVal [i]       = 9999;
-    for (int i=0; i<16; i++) evt->PeakTime [i]      = -1;
-    for (int i=0; i<16; i++) {
-        for (int j=0; j<128; j++) evt->Sample[i][j] = 9999;
-    }
 
      //---- EXTRACT PACKAGES FROM BUFFER ----//
     unsigned int buffer_uint[65536];
