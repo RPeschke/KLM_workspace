@@ -26,7 +26,7 @@ data.
 
 
 The following is a heirarchy of the "wrkspc" directory structure:
-
+```
 wrkspc/
     bin/                ~binary executable of C++ parsing script
     Bitfiles/           ~bit files to load onto FPGA
@@ -54,3 +54,4 @@ wrkspc/
     tmp/                ~temporary files used during data collection and parsing
     README
     Makefile            ~for compiling the C++ parsing script
+```
