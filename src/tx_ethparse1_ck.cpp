@@ -44,6 +44,20 @@ class MBevent {
 
 };
 
+ //----FIND BUFFER POSITION FOR START OF PACKAGE----//
+
+  int  FIND_BUFFER_POSITION_FOR_START_OF_PACKAGE(const  unsigned char* buff,  int pos1,long size){
+        while (
+            (pos1 < (size-16))
+            && (!((buff[pos1]=='w' && buff[pos1+1]=='a' && buff[pos1+2]=='v' && buff[pos1+3]=='e')) // for OutMode==0 //ex. wave-->-------\    |pos1    --------         pos2\       (all utf 8-bit)
+            &&  !((buff[pos1]=='c' && buff[pos1+1]=='h' && buff[pos1+2]=='r' && buff[pos1+3]=='g'))) // for OutMode==1//sdf0k\Uffffffffdf\Uffffffffet\Uffffffffk\Uffffffffwq\Uffffffff\Uffffffffjwave\Uffffffff\Uffffffff\Uffffffff\Uffffffffu\Uffffffff57\Uffffffff\Ufffffffffm\Uffffffff/\Uffffffff08\Uffffffff\Uffffffff\Uffffffff\Uffffffffhrg=\Uffffffff3\Uffffffff\Uffffffff\Uffffffff1\Uffffffff\Uffffffffhn\Uffffffffhk\Uffffffff
+              ) {
+            pos1++;
+        }
+       
+    return pos1;
+  }
+
 //-----------------------------------------------------//
 //                   PROCESS BUFFER
 //-----------------------------------------------------//
@@ -73,25 +87,11 @@ void processBuffer(const unsigned char* buff,const long size, const char* wavefo
 
     while (pos1 < (size-16)) {
 
-        //----FIND BUFFER POSITION FOR START OF PACKAGE----//
-        while (
-            (pos1 < (size-16))
-            && (!((buff[pos1]=='w' && buff[pos1+1]=='a' && buff[pos1+2]=='v' && buff[pos1+3]=='e')) // for OutMode==0 //ex. wave-->-------\    |pos1    --------         pos2\       (all utf 8-bit)
-            &&  !((buff[pos1]=='c' && buff[pos1+1]=='h' && buff[pos1+2]=='r' && buff[pos1+3]=='g'))) // for OutMode==1//sdf0k\Uffffffffdf\Uffffffffet\Uffffffffk\Uffffffffwq\Uffffffff\Uffffffffjwave\Uffffffff\Uffffffff\Uffffffff\Uffffffffu\Uffffffff57\Uffffffff\Ufffffffffm\Uffffffff/\Uffffffff08\Uffffffff\Uffffffff\Uffffffff\Uffffffffhrg=\Uffffffff3\Uffffffff\Uffffffff\Uffffffff1\Uffffffff\Uffffffffhn\Uffffffffhk\Uffffffff
-              ) {
-            pos1++;
-        }
+        pos1 = FIND_BUFFER_POSITION_FOR_START_OF_PACKAGE(buff,pos1,size);
         pos1 += 4; // Increment both place holders past package markers identifed above.
-        pos2 = pos1;
 
         //----FIND BUFFER POSITION FOR START OF NEXT PACKAGE----//
-        while (
-            (pos2 < (size-16))
-            && (!((buff[pos2]=='w' && buff[pos2+1]=='a' && buff[pos2+2]=='v' && buff[pos2+3]=='e'))
-            &&  !((buff[pos2]=='c' && buff[pos2+1]=='h' && buff[pos2+2]=='r' && buff[pos2+3]=='g')))
-              ) {
-            pos2++;
-        }
+        pos2 = FIND_BUFFER_POSITION_FOR_START_OF_PACKAGE(buff,pos1,size);
 
 
         //----CONVERT DATA FROM 8-BIT BUFFER TO 32-BIT BUFFER----//
