@@ -52,8 +52,12 @@ void processBuffer( unsigned char* buff, long size, char* waveformOutfile, char*
     ofstream outfile(waveformOutfile, ofstream::out | ofstream::app); // data in form of ascii (8-bit) characters // app opt. writes to end.
 
 
-    MBevent* evt = new MBevent;
     ofstream CAoutfile(trigBitOutfile, ofstream::out | ofstream::app);
+
+
+    
+    MBevent evt;
+
 
      //---- EXTRACT PACKAGES FROM BUFFER ----//
     unsigned int buffer_uint[65536];
@@ -121,11 +125,11 @@ void processBuffer( unsigned char* buff, long size, char* waveformOutfile, char*
             int window      = -1;
 
             //----FOR EACH 32-bit WORD, EXTRACT DATA USING BIT-WISE & OPERATORS----//
-            evt->AddNum     =   (buffer_uint[0])      & 0x000001FF ;   // word #0: read 5 bits
-            evt->WrAddNum   =   (buffer_uint[0]>>9)   & 0x000001FF ;   // word #0: read 5 bits
-            evt->ASIC       =  ((buffer_uint[0]>>20)  & 0x0000000F)-1; // word #0: read 4 bits
-            evt->EvtNum     =   (buffer_uint[1])      & 0x00FFFFFF ;   // word #1: read 24 bits
-            evt->Wctime     =   (buffer_uint[2])      & 0x0FFFFFFF ;   // word #2: read 28 bits
+            evt.AddNum     =   (buffer_uint[0])      & 0x000001FF ;   // word #0: read 5 bits
+            evt.WrAddNum   =   (buffer_uint[0]>>9)   & 0x000001FF ;   // word #0: read 5 bits
+            evt.ASIC       =  ((buffer_uint[0]>>20)  & 0x0000000F)-1; // word #0: read 4 bits
+            evt.EvtNum     =   (buffer_uint[1])      & 0x00FFFFFF ;   // word #1: read 24 bits
+            evt.Wctime     =   (buffer_uint[2])      & 0x0FFFFFFF ;   // word #2: read 28 bits
 
             //----LOOP OVER CURRENT PACKAGE AND EXTRACT DATA----//
             while (count < wbuflen) {
@@ -139,18 +143,18 @@ void processBuffer( unsigned char* buff, long size, char* waveformOutfile, char*
                     sampNum     = ((buffer_uint[offset+count]>>12) & 0x0000001F)+window*32; // word #3 & up: read 5 bits
                     int BDval   =  (buffer_uint[offset+count]>>24) & 0x000000FF; // word #3 & up: read 8 bits (top 8 bits)
                     // make sure info is still valid before extracting samples---must pass these four conditions
-                    if (evt->AddNum >= MEMORY_DEPTH  || evt->ASIC > NASICS || sampNum >= NSAMP || BDval != 0xBD) {
+                    if (evt.AddNum >= MEMORY_DEPTH  || evt.ASIC > NASICS || sampNum >= NSAMP || BDval != 0xBD) {
                         cout << "INVALID SAMPLE INFO, SKIPPING "    << "\n"
                              << "Loop counter: "    << count        << "\n"
-                             << "Address number: "  << evt->AddNum  << "\n"
-                             << "ASIC number: "     << evt->ASIC    << "\n"
+                             << "Address number: "  << evt.AddNum  << "\n"
+                             << "ASIC number: "     << evt.ASIC    << "\n"
                              << "Sample number: "   << sampNum      << "\n"
                              << "BD value: "        << BDval        << "\n";
                         count++;
                         continue;
                     }
                     else {
-                        evt->Sample[chanNum][sampNum] = ((buffer_uint[offset+count]) & 0x00000FFF); // word #3 & up: read 12 bits (bottom 12 bits)
+                        evt.Sample[chanNum][sampNum] = ((buffer_uint[offset+count]) & 0x00000FFF); // word #3 & up: read 12 bits (bottom 12 bits)
                     }
                 }
 
@@ -158,8 +162,8 @@ void processBuffer( unsigned char* buff, long size, char* waveformOutfile, char*
                 //----CHECK FOR FEATURE EXTRACTION --  INDICATED BY "CB" VALUE----//
                 if ((buffer_uint[offset+count]& 0xFF000000)==0xCB000000) { // note: current usage is 31 bits
                     chanNum                 = (0x00F00000 & buffer_uint[offset+count])>>20;
-                    evt->PeakTime[chanNum]  = buffer_uint[offset+count]>>12 & 0x7F; // 7 bits for sample number
-                    evt->PeakVal[chanNum]   = (buffer_uint[offset+count] & 0x0FFF); // 12 bit ADC count for peak
+                    evt.PeakTime[chanNum]  = buffer_uint[offset+count]>>12 & 0x7F; // 7 bits for sample number
+                    evt.PeakVal[chanNum]   = (buffer_uint[offset+count] & 0x0FFF); // 12 bit ADC count for peak
                 }
 
 
@@ -201,15 +205,15 @@ void processBuffer( unsigned char* buff, long size, char* waveformOutfile, char*
             }//END OF EXTRACT DATA FROM CURRENT PACKAGE
 
             //----WRITE PARSED PACKAGE TO FILE (ONE LINE PER EVENT)----//
-            outfile <<      evt->EvtNum      << " ";
-            outfile <<      evt->AddNum      << " ";
-            outfile <<      evt->WrAddNum    << " ";
-            outfile <<      evt->Wctime      << " ";
-            outfile <<      evt->ASIC        << " ";
+            outfile <<      evt.EvtNum      << " ";
+            outfile <<      evt.AddNum      << " ";
+            outfile <<      evt.WrAddNum    << " ";
+            outfile <<      evt.Wctime      << " ";
+            outfile <<      evt.ASIC        << " ";
             for (int i=0; i<16; i++) {
-                outfile <<  evt->PeakTime[i] << " ";
-                outfile <<  evt->PeakVal[i]  << " ";
-                for (int j=0; j<128; j++) outfile << evt->Sample[i][j] << " ";
+                outfile <<  evt.PeakTime[i] << " ";
+                outfile <<  evt.PeakVal[i]  << " ";
+                for (int j=0; j<128; j++) outfile << evt.Sample[i][j] << " ";
             }
             outfile << "\n";
             eventCounter++;
