@@ -47,7 +47,8 @@ class MBevent {
 //-----------------------------------------------------//
 //                   PROCESS BUFFER
 //-----------------------------------------------------//
-void processBuffer( unsigned char* buff, long size, char* waveformOutfile, char* trigBitOutfile, int OutMode) {
+void processBuffer(const unsigned char* buff,const long size, const char* waveformOutfile,const char* trigBitOutfile,const int OutMode) {
+
 
     ofstream outfile(waveformOutfile, ofstream::out | ofstream::app); // data in form of ascii (8-bit) characters // app opt. writes to end.
 
