@@ -226,6 +226,12 @@ void processBuffer( unsigned char* buff, long size, char* waveformOutfile, char*
     delete evt; // Clear all memory declared as new.
 }//END PROCESS BUFFER
 
+long   GET_LENGTH_OF_FILE(std::ifstream& infile){
+    infile.seekg (0, infile.end);       // Seek to a position offset 0 from end of infile stream.
+    long size_in_bytes = infile.tellg(); // Return position of get-pointer.
+    infile.seekg (0, infile.beg);       // Move get-pointer back to beginning of file stream buffer.
+    return size_in_bytes;
+}
 
 
 //--------------------------------------------------------//
@@ -262,10 +268,6 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    //---- GET LENGTH OF FILE ----//
-    infile.seekg (0, infile.end);       // Seek to a position offset 0 from end of infile stream.
-    long size_in_bytes = infile.tellg(); // Return position of get-pointer.
-    infile.seekg (0, infile.beg);       // Move get-pointer back to beginning of file stream buffer.
 
      //---- READ DATA TO BUFFER ----//
     char* buffer = new char [size_in_bytes]; // Declare memory
