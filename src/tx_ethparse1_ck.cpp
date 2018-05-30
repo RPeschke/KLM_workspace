@@ -62,6 +62,26 @@ bool end_of_package_marker(const unsigned char* buff,int pos1){
      // End of package marked by hex words "FACEFACE = \Uffffffff?
     return ((buff[pos1] == 0xFA) && (buff[pos1+1] == 0xCE) && (buff[pos1+2] == 0xFA) && (buff[pos1+3] == 0xCE)); 
 }
+
+//----CONVERT DATA FROM 8-BIT BUFFER TO 32-BIT BUFFER----//
+int CONVERT_DATA_FROM_8_BIT_BUFFER_TO_32_BIT_BUFFER(const unsigned char* buff, int& pos1, const int pos2,  unsigned int*  buffer_uint){
+    int wordNum=0;
+    int posRead=0;
+    while (
+    (pos1<pos2)  && !end_of_package_marker(buff,pos1)) {
+        if (posRead%4==0) { // Fill waveform buffer.
+            buffer_uint[wordNum]=((unsigned int)buff[pos1+0])<<24 | ((unsigned int)buff[pos1+1])<<16 | ((unsigned int)buff[pos1+2])<<8 | ((unsigned int)buff[pos1+3]);
+            wordNum++;
+        }
+        posRead++;
+        pos1++; // When at end of while-loop, pos1 should be either at the word FACEFACE or at start of next package?
+    }
+            
+    
+    return wordNum;
+}
+
+
 //-----------------------------------------------------//
 //                   PROCESS BUFFER
 //-----------------------------------------------------//
@@ -102,19 +122,9 @@ void processBuffer(const unsigned char* buff,const long size, const char* wavefo
 
         //----CONVERT DATA FROM 8-BIT BUFFER TO 32-BIT BUFFER----//
         if ((buff[pos1]==0xFE && buff[pos1+4]==0xCF && (buff[pos1+8]&0xF0)==0xD0)) { // We do have a package.
-            
-            int wordNum=0;
-            int posRead=0;
-            while (
-                (pos1<pos2)  && !end_of_package_marker(buff,pos1)) {
-                if (posRead%4==0) { // Fill waveform buffer.
-                    buffer_uint[wordNum]=((unsigned int)buff[pos1+0])<<24 | ((unsigned int)buff[pos1+1])<<16 | ((unsigned int)buff[pos1+2])<<8 | ((unsigned int)buff[pos1+3]);
-                    wordNum++;
-                }
-                posRead++;
-                pos1++; // When at end of while-loop, pos1 should be either at the word FACEFACE or at start of next package?
-            }
-            int wbuflen=wordNum; // Waveform buffer length as number of 32-bit words.
+           
+            int wbuflen= CONVERT_DATA_FROM_8_BIT_BUFFER_TO_32_BIT_BUFFER( buff,pos1,pos2,buffer_uint);
+
             
             //----PRINT PSEUDO STATUS BAR TO TERMINAL----//
             //if (eventCounter == 1) cout << "Passing package of " << wbuflen <<" 32-bit words to waveform buffer\n";
