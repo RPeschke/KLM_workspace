@@ -42,7 +42,24 @@ class MBevent {
 
     }  
 
+ 
+friend std::ostream& operator<<(std::ostream& out, const MBevent& evt){
+        out <<      evt.EvtNum      << " ";
+        out <<      evt.AddNum      << " ";
+        out <<      evt.WrAddNum    << " ";
+        out <<      evt.Wctime      << " ";
+        out <<      evt.ASIC        << " ";
+        for (int i=0; i<16; i++) {
+            out <<  evt.PeakTime[i] << " ";
+            out <<  evt.PeakVal[i]  << " ";
+            for (int j=0; j<128; j++) out << evt.Sample[i][j] << " ";
+        }
+        out << "\n";
+
+        return out;
+    }
 };
+
 
  //----FIND BUFFER POSITION FOR START OF PACKAGE----//
 
@@ -81,7 +98,13 @@ int CONVERT_DATA_FROM_8_BIT_BUFFER_TO_32_BIT_BUFFER(const unsigned char* buff, i
     return wordNum;
 }
 
-
+void PRINT_PSEUDO_STATUS_BAR_TO_TERMINAL(int eventCounter){
+    
+            //----PRINT PSEUDO STATUS BAR TO TERMINAL----//
+            //if (eventCounter == 1) cout << "Passing package of " << wbuflen <<" 32-bit words to waveform buffer\n";
+            if (eventCounter%100 == 0) cout << "." << flush;
+            if (eventCounter%8000 == 0) cout << "<---" << eventCounter << "\n";
+}
 //-----------------------------------------------------//
 //                   PROCESS BUFFER
 //-----------------------------------------------------//
@@ -115,7 +138,6 @@ void processBuffer(const unsigned char* buff,const long size, const char* wavefo
         pos1 = FIND_BUFFER_POSITION_FOR_START_OF_PACKAGE(buff,pos1,size);
         pos1 += 4; // Increment both place holders past package markers identifed above.
 
-        //----FIND BUFFER POSITION FOR START OF NEXT PACKAGE----//
         pos2 = FIND_BUFFER_POSITION_FOR_START_OF_PACKAGE(buff,pos1,size);
 
 
@@ -124,18 +146,16 @@ void processBuffer(const unsigned char* buff,const long size, const char* wavefo
         if ((buff[pos1]==0xFE && buff[pos1+4]==0xCF && (buff[pos1+8]&0xF0)==0xD0)) { // We do have a package.
            
             int wbuflen= CONVERT_DATA_FROM_8_BIT_BUFFER_TO_32_BIT_BUFFER( buff,pos1,pos2,buffer_uint);
-
+    
+    
+            PRINT_PSEUDO_STATUS_BAR_TO_TERMINAL(eventCounter);
             
-            //----PRINT PSEUDO STATUS BAR TO TERMINAL----//
-            //if (eventCounter == 1) cout << "Passing package of " << wbuflen <<" 32-bit words to waveform buffer\n";
-            if (eventCounter%100 == 0) cout << "." << flush;
-            if (eventCounter%8000 == 0) cout << "<---" << eventCounter << "\n";
-
+            
 
             //----PARSE UINT32 BUFFER & STORE DATA AS INSTANCE OF MBevent CLASS----//
 
             int count       = 0;
-            int offset     = 3;
+            const int offset     = 3;
             int sampNum     = -1;
             int chanNum     = -1;
             int window      = -1;
@@ -221,17 +241,7 @@ void processBuffer(const unsigned char* buff,const long size, const char* wavefo
             }//END OF EXTRACT DATA FROM CURRENT PACKAGE
 
             //----WRITE PARSED PACKAGE TO FILE (ONE LINE PER EVENT)----//
-            outfile <<      evt.EvtNum      << " ";
-            outfile <<      evt.AddNum      << " ";
-            outfile <<      evt.WrAddNum    << " ";
-            outfile <<      evt.Wctime      << " ";
-            outfile <<      evt.ASIC        << " ";
-            for (int i=0; i<16; i++) {
-                outfile <<  evt.PeakTime[i] << " ";
-                outfile <<  evt.PeakVal[i]  << " ";
-                for (int j=0; j<128; j++) outfile << evt.Sample[i][j] << " ";
-            }
-            outfile << "\n";
+            outfile << evt;
             eventCounter++;
         }//END OF PACKAGE
     }//END OF ALL PACKAGES
