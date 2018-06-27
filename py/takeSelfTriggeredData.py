@@ -53,7 +53,7 @@ CHmask      = int(sys.argv[4],2)
 hvOffset    = int(sys.argv[5])
 trigOffset  = int(sys.argv[6])
 NumEvts     = int(sys.argv[7])
-
+tTotal      = 12*3600
 opMode      = 1     ## pedestal subtracted data
 #opMode      = 2     ## pedestals only
 #opMode      = 3     ## raw data (i.e. pedSub offline)
@@ -135,10 +135,10 @@ trig_cmd = syncwd + "AF00FFFF"+"AF00FFFF"+"AF370001"+"AE000001"+"AF370000"+"AE00
 ctrl = linkEth.UDP(addr_fpga, port_fpga, addr_pc, port_pc, interface)
 ctrl.open()
 time.sleep(0.1)
-ctrl.KLMprint(cmdASIC_HV, "cmdASIC_HV")
+#ctrl.KLMprint(cmdASIC_HV, "cmdASIC_HV")
 ctrl.send(cmdASIC_HV)
 time.sleep(0.2)
-ctrl.KLMprint(cmdASIC_Th, "cmdASIC_Th")
+#ctrl.KLMprint(cmdASIC_Th, "cmdASIC_Th")
 ctrl.send(cmdASIC_Th)
 time.sleep(0.2)
 #ctrl.KLMprint(cmd_runConfig, "run config")
@@ -150,17 +150,22 @@ time.sleep(0.2)
 #-------------------------------DATA COLLECTION--------------------------------#
 #------------------------------------------------------------------------------#
 #HVtrim = hvLow[0][0]-hvOffset
-print "Taking %s events at trig level %d, trim level %d . . ." % (NumEvts,trigOffset,hvOffset)
+#print "Taking %s events at trig level %d, trim level %d . . ." % (NumEvts,trigOffset,hvOffset)
+print "Taking data for %d seconds" % (tTotal)
 os.system("echo -n > temp/data.dat") #clean file without removing (prevents ownership change to root in this script)
 f = open('temp/data.dat','ab') #a=append, b=binary
 time.sleep(0.1)
 t1 = tProg = time.time()
-for i in range(1, NumEvts+1):
+t2 = t1-time.time()
+evtNum=0
+while (t2<tTotal):
+    evtNum+=1
+#for i in range(1, NumEvts+1):
     if (time.time()-tProg > 12600):
         ctrl.send(cmdHVoff)
         time.sleep(0.1)
         ctrl.close()
-        os.system("sudo /bin/bash setup_thisMB.sh")
+        os.system("sudo /bin/bash setup_thisMB.sh %s" % sys.argv[3])
         time.sleep(0.1)
         ctrl.open()
         time.sleep(0.2)
@@ -176,16 +181,16 @@ for i in range(1, NumEvts+1):
 #    ctrl.send(trig_cmd)
     rcv = ctrl.receive(20000)# rcv is string of Hex
     time.sleep(0.001)
-    if ((i%100)==0):
+    if ((evtNum%1)==0):
         sys.stdout.write('.')
         sys.stdout.flush()
-    if (i%8000)==0 or i==(NumEvts):
-        sys.stdout.write("<--%d\n" % i)
+    if (evtNum%80)==0 or evtNum==(NumEvts):
+        sys.stdout.write("<--%d\n" % evtNum)
         sys.stdout.flush()
     rcv = linkEth.hexToBin(rcv)
     f.write(rcv) # write received binary data into file
-t2 = time.time()
-EvtRate = NumEvts/float(t2-t1)
+    t2 = time.time()-t1
+EvtRate = evtNum/float(t2)
 print "\nOverall hit rate was %.2f Hz" % EvtRate
 ctrl.send(syncwd + "AF270000" + "AE000100")
 time.sleep(0.2)

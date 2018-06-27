@@ -50,9 +50,9 @@ ASICmask    = int(sys.argv[3],2)
 hvOffset    = int(sys.argv[4])
 NumEvts     = int(sys.argv[5])
 
-#opMode      = 1     ## pedestal subtracted data
+opMode      = 1     ## pedestal subtracted data
 #opMode      = 2     ## pedestals only
-opMode      = 3     ## raw data (i.e. pedSub offline)
+#opMode      = 3     ## raw data (i.e. pedSub offline)
 
 outMode     = 0     ## entire waveforms
 #outMode     = 1     ## feature extracted data only
@@ -117,16 +117,6 @@ for ASIC in range(10):
         cmdHVoff  += hex( int('C',16)*(2**28) | ASIC*(2**20) | (CH)*(2**16) | 255 ).split('x')[1]
         cmdZeroTh += hex( int('B',16)*(2**28) | ASIC*(2**24) | (2*CH)*(2**16) | 0 ).split('x')[1]
 
-#---- DATA-COLLECTION PARAMETERS FOR SCROD REGISTERS ----#
-cmd_runConfig  = syncwd + "AF3E8000"+"AE000100"+"AF250000"+"AE000100"#disable ext. trig
-#cmd_runConfig += "AF3E0000" + "AE000100"#set win start---> is set to zero for internal triggering
-cmd_runConfig += hex(int('AF3E0000',16) | fxdWin*(2**15) | fxdWin*0        ).split('x')[1] +"AE000100"#set win start---> is set to zero for internal triggering
-cmd_runConfig += hex(int('AF360000',16) | 0              | winOffset       ).split('x')[1] +"AE000100"#set win offset
-cmd_runConfig += hex(int('AF330000',16) | 2**25           | ASICmask        ).split('x')[1] +"AE000100"#set asic number
-cmd_runConfig += hex(int('AF260000',16) | opMode*(2**12) | 2**7            ).split('x')[1] +"AE000100"#CMDREG_PedDemuxFifoOutputSelect(13 downto 12)-->either wavfifo or pedfifo,CMDREG_PedSubCalcMode(10 downto 7)-->currently only using bit 7: 1 for peaks 2 for troughs, sample offset is 3400 o6 600 respectively
-cmd_runConfig += hex(int('AF270000',16) | trgTyp*(2**15) | ASICmask        ).split('x')[1] +"AE000100"#set trig mode & asic trig enable
-cmd_runConfig += hex(int('AF4A0000',16) | outMode*(2**8) | 1*2**4 + 2*2**0 ).split('x')[1] +"AE000100"#set outmode and win boundaries for trigger bits: x12 scans 1 win back and two forward
-cmd_runConfig += "AF4F0002" # external trigger bit format
 
 trig_cmd = syncwd + "AF00FFFF"+"AF00FFFF"+"AF370001"+"AE000001"+"AF370000"+"AE000001"+"AF320001"+"AE000001"+"AF320000" # modified original from AF00FFF+AF00FFFFF / CK
 
@@ -143,30 +133,49 @@ time.sleep(0.2)
 ctrl.send(cmdZeroTh)
 time.sleep(0.2)
 #ctrl.KLMprint(cmd_runConfig, "run config")
-ctrl.send(cmd_runConfig)
+#ctrl.send(cmd_pedConfig)
 time.sleep(0.2)
 
 
 #------------------------------------------------------------------------------#
 #-------------------------------DATA COLLECTION--------------------------------#
 #------------------------------------------------------------------------------#
-print "Taking %s events . . ." % (NumEvts)
 os.system("echo -n > temp/data.dat") #clean file without removing (prevents ownership change to root in this script)
 f = open('temp/data.dat','ab') #a=append, b=binary
 time.sleep(0.1)
 t1 = time.time()
-for i in range(1, NumEvts+1):
-    ctrl.send(trig_cmd)
-    rcv = ctrl.receive(20000)# rcv is string of Hex
-    time.sleep(0.01)
-    if ((i%1)==0):
-        sys.stdout.write('.')
-        sys.stdout.flush()
-    if (i%80)==0 or i==(NumEvts):
-        sys.stdout.write("<--%d\n" % i)
-        sys.stdout.flush()
-    rcv = linkEth.hexToBin(rcv)
-    f.write(rcv) # write received binary data into file
+for ASIC in range(10):
+    print "\nTaking %s events for ASIC %d . . ." % (NumEvts, ASIC)
+    if 2**ASIC and ASICmask:
+        for i in range(NumEvts):
+            #---- DATA-COLLECTION PARAMETERS FOR SCROD REGISTERS ----#
+            cmd_runConfig  = syncwd
+            cmd_runConfig += hex(int('AF330000',16) | 2**ASIC                    ).split('x')[1] +"AE000100"#set asic number
+            cmd_runConfig += hex(int('AF3E0000',16) | fxdWin*(2**15)             ).split('x')[1] +"AE000100"#set win start---> is set to zero for internal triggering
+            cmd_runConfig += hex(int('AF250000',16)                              ).split('x')[1] +"AE000100"
+            cmd_runConfig += hex(int('AF270000',16) | trgTyp*(2**15) | 2**ASIC   ).split('x')[1] +"AE000100"#set trig mode & asic trig enable
+            cmd_runConfig += hex(int('AF360000',16) | 0              | winOffset ).split('x')[1] +"AE000100"#set win offset
+            cmd_runConfig += hex(int('AF260000',16) | opMode*(2**12) | 0         ).split('x')[1] +"AE000100"#CMDREG_PedDemuxFifoOutputSelect(13 downto 12)-->either wavfifo or pedfifo,CMDREG_PedSubCalcMode(10 downto 7)-->currently only using bit 7: 1 for peaks 2 for troughs, sample offset is 3400 o6 600 respectively
+            cmd_runConfig += hex(int('AF4A0000',16) | outMode*(2**8) | 18        ).split('x')[1] +"AE000100"#set outmode and win boundaries for trigger bits: x12 scans 1 win back and two forward
+            cmd_runConfig += "AF4F0000" # external trigger bit format
+            ctrl.send(cmd_runConfig)
+            time.sleep(0.01)
+
+            wincmd = syncwd + hex(int('AF3E8000',16) | (i*4)%512).split('x')[1]
+            #ctrl.KLMprint(wincmd, "winCmd")
+            ctrl.send(wincmd)
+            time.sleep(0.01)
+            ctrl.send(trig_cmd)
+            rcv = ctrl.receive(20000)# rcv is string of Hex
+            time.sleep(0.01)
+            if ((i%1)==0):
+                sys.stdout.write('.')
+                sys.stdout.flush()
+            if (i>0 and (i%80)==0) or i==(NumEvts):
+                sys.stdout.write("<--%d\n" % i)
+                sys.stdout.flush()
+            rcv = linkEth.hexToBin(rcv)
+            f.write(rcv) # write received binary data into file
 t2 = time.time()
 EvtRate = NumEvts/float(t2-t1)
 print "\nOverall hit rate was %.2f Hz" % EvtRate
@@ -183,8 +192,10 @@ time.sleep(0.1)
 
 #---- RUN DATA-PARSING EXECUTABLE ----#
 print "\nParsing %s Data" % SN
-os.system("echo -n > temp/waveformSamples.txt") #clean file without removing (prevents ownership change to root in this script)
+#os.system("echo -n > temp/waveformSamples.txt") #clean file without removing (prevents ownership change to root in this script)
+time.sleep(0.1)
 os.system("./bin/tx_ethparse1_ck temp/data.dat temp/waveformSamples.txt temp/triggerBits.txt " + str(outMode))
+time.sleep(0.1)
 os.system("echo -n > temp/data.dat") #clean binary file again to save disk space!
 time.sleep(0.1)
 print "\nData parsed."
