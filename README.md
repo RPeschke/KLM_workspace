@@ -9,26 +9,24 @@ to take data with the use of two scripts.
 
 1st, the low-voltage power supply should be switched on and voltages should
 be measured to verify that they are consistent with the set points indicated
-on the silkscreen near each test point.
+on the silkscreen near each test point (+/-5V and 3.3V).
 
 Now the HV can be switched on. It should be set to 74.9 volts. DON'T TURN ON
 HV WITHOUT THE LOW VOLTAGE ON.
 
-Open a terminal and navigate to this directory.
-
-Configure the motherboard by executing the line "source setup_this_MB.sh"
-This script will program the FPGA with the current 'bit file,' wait for things
-to settle a bit, configure FPGA and TargetX registers, and finally take
-pedestal data (in firmware). Upon executing this line, the script will ask for
-an ASIC mask (or one can be provided as an argument while launching the script).
-Each bit of the mask enables/disables pedestal calculation for true/false
-states respectively.  
+Open a terminal and navigate to this directory. Configure the motherboard by
+executing the line "source setup_this_MB.sh" This script will program the FPGA
+with the current 'bit file,' wait for things to settle a bit, configure FPGA and
+TargetX registers, and finally take pedestal data (in firmware). Upon executing
+this line, the script will ask for an ASIC mask (or one can be provided as an
+argument while launching the script). Each bit of the mask enables/disables
+pedestal calculation for true/false states respectively.  
 
 Upon successful completion of setup_this_MB.sh, the MB is ready for collecting
-data.
-
-Data collection, management, analysis, and sensor calibration are all handled
-by a steering script, e.g. 'KLM_HI_SteeringScript.py' 
+data. Data collection, management, analysis, and sensor calibration are all
+handled by a steering script, e.g. 'KLM_HI_SteeringScript.py' Make your own
+version of this or a similar steering script and you are ready to use the
+KLM Hawaii testbench. 
 
 
 The following is a heirarchy of the "workspace" directory structure:
