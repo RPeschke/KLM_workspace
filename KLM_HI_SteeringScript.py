@@ -39,10 +39,10 @@ strRawHV    = str(sys.argv[2])
 #########################################
 ##     DATA COLLECTION PARAMETERS      ##
 #########################################
-numEvts      = 150000
-trigOffset   = 30
+numEvts      = 1280
+trigOffset   = 650
 HVtrimOffset = 5
-ASICmask     = "0000000001"
+ASICmask     = "1010101010"
 Window       = 0
 CHmask       = "0000000000000001"
 ascii_input  = "temp/waveformSamples.txt"
@@ -61,46 +61,72 @@ approxHV = floatrawHV - 5.*169./256. ## fix this later. Should be rawHV - 5*(tri
 ROOT.gROOT.LoadMacro("root/MakeMBeventTTree.cxx")
 ROOT.gROOT.LoadMacro("root/PlotSomeWaveforms.cxx")
 ROOT.gROOT.LoadMacro("root/MultiGaussFit.cxx")
+ROOT.gROOT.LoadMacro("root/PlotPedestalStatisticsOneASIC.cxx")
+ROOT.gROOT.LoadMacro("root/PlotPedestalStatisticsManyASICs.cxx")
 time.sleep(0.1)
+
+#########################################
+#####  Measure Pedestal Distribution  #####
+#########################################
+numPedEvtsPerWindow = 1
+os.system("echo -n > temp/waveformSamples.txt") #clear ascii file
+time.sleep(0.1)
+os.system("sudo ./py/takeSoftwareTriggeredData.py %s %s %s %d %d" % (SN,strRawHV,ASICmask,0,numPedEvtsPerWindow*128))
+time.sleep(0.1)
+os.system("sudo rm temp/pedsTemp.root")
+time.sleep(0.1)
+ROOT.MakeMBeventTTree("temp/waveformSamples.txt", "temp/pedsTemp.root", "RECREATE")
+time.sleep(0.1)
+ROOT.PlotPedestalStatisticsManyASICs("temp/pedsTemp.root", "temp/pedDist.pdf")
+time.sleep(0.1)
+print("Pedestal distribution finished")
 
 #########################################
 ##         TAKE CALIB DATA             ##
 #########################################
 ####/py/CalibChThresholdScan.py <S/N> <HV> <ASICmask>
-os.system("sudo ./py/SingleASIC/SingleASIC_Starting_Values.py KLMS_0173 %s" % strRawHV)
+#os.system("sudo ./py/SingleASIC/SingleASIC_Starting_Values.py KLMS_0173 %s" % strRawHV)
 time.sleep(0.1)
+
+
+
+
 
 #########################################
 #####         Take Data             #####
 #########################################
+os.system("echo -n > temp/waveformSamples.txt") #clear ascii file
 #for i in range(128):
 #    #os.system("sudo ./py/takeSoftwareTriggeredData.py %s %s %s %d %d" % (SN,strRawHV,ASICmask,HVtrimOffset,numEvts))
 #os.system("sudo ./py/takeSoftwareTriggeredDataFixedWin.py %s %s %s %d %d" % (SN,strRawHV,ASICmask,8,numEvts))
-os.system("sudo ./py/takeSelfTriggeredData.py %s %s %s %s %d %d %d" % (SN,strRawHV,ASICmask,CHmask,HVtrimOffset,trigOffset,numEvts))
+#os.system("sudo ./py/takeSelfTriggeredData.py %s %s %s %s %d %d %d" % (SN,strRawHV,ASICmask,CHmask,HVtrimOffset,trigOffset,numEvts))
 time.sleep(0.1)
 
 #########################################
 ##          Make ROOT TTree            ##
 #########################################
 ####Constructor: MakeMBeventTTree(const char* ascii_input, const char* root_output, const char* TFile_option)
-print "writring in %s" % root_file
-ROOT.MakeMBeventTTree("temp/waveformSamples.txt", root_file, "RECREATE")
-time.sleep(0.1)
-os.system("echo -n > temp/waveformSamples.txt") #clear ascii file
-os.system("chown testbench2:testbench2 " + root_file + " && chmod g+w " + root_file)
+#print "writring in %s" % root_file
+#ROOT.MakeMBeventTTree("temp/waveformSamples.txt", root_file, "RECREATE")
+#time.sleep(0.1)
+#os.system("echo -n > temp/waveformSamples.txt") #clear ascii file
+#os.system("chown testbench2:testbench2 " + root_file + " && chmod g+w " + root_file)
 
 
 #########################################
 ###           Analyze Data            ###
 #########################################
 
-#####PlotPhotoElectronPeaks(char* root_file, int ASIC, int CH, float HV)
-ROOT.MultiGaussFit(root_file, 0, 0, approxHV)
-
 #####PlotSomeWaveforms(const char* root_file, const int argCH)
 #ROOT.PlotSomeWaveforms(root_file,15)
 #time.sleep(0.1)
 #ROOT.PlotSomeWaveforms(root_file,0)
 
+#####PlotPhotoElectronPeaks(char* root_file, int ASIC, int CH, float HV)
+#ROOT.MultiGaussFit(root_file, 0, 0, approxHV)
+
 #####PlotPhotoElectronPeaks_vs_HV(SN, root_dir, argASIC, argCH)
 #ROOT.PlotPhotoElectronPeaks_vs_HV(SN,    "ch0",       0,     0)
+
+
+print("END of instructions from KLM_HI_SteeringScript.py\n\n")

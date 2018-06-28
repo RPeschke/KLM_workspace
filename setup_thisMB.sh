@@ -12,11 +12,15 @@ echo
 #read -p ">>>" InterfaceType
 #echo
 InterfaceType=eth4
-echo "ENTER ASIC mask:"
-echo "e.g. >>>0100000001  to setup ASIC_0 and ASIC_8"
-echo
-read -p " >>>" binMask
-#binMask=0000000000
+if [ "$#" = "1" ]
+then
+  binMask=$1
+else
+  echo "ENTER ASIC mask:"
+  echo "e.g. >>>0100000001  to setup ASIC_0 and ASIC_8"
+  echo
+  read -p " >>>" binMask
+fi
 ASICmask=$(bc<<<"obase=10;ibase=2;$binMask")
 #echo
 echo "Reprogramming FPGA..."
@@ -51,7 +55,6 @@ done
 sleep 1
 echo "                                    ......Pedcalc done"
 echo
-echo "KLM Motherboard has been configured."
-echo "Proceed to set gains and thresholds before taking data."
+echo "Finished executing 'setup_thisMB.sh'"
 echo
 echo
