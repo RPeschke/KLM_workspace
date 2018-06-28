@@ -2,7 +2,6 @@
 // This class has been automatically generated on
 // Sun May 27 14:39:39 2018 by ROOT version 5.34/18
 // from TTree tree/SciFi tracker output via KLM motherboard
-// found on file: C:/Users/Argg/Documents/Github/KLM/data/KLMS_0173.root
 //////////////////////////////////////////////////////////
 
 #ifndef KLM_Tree_h

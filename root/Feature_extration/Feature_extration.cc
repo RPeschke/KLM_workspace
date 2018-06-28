@@ -5,9 +5,9 @@
 
 
 #include "TGraph.h"
-#include "Feature_extration_base.hh"
-#include "Feature_extration/helper_int_vector.hh"
+
 #include "Feature_extration/extract_peak.hh"
+#include "Feature_extration/helper_int_vector.hh"
 #include "Feature_extration/filter_waveform.hh"
 #include "Feature_extration/extract_area.hh"
 #include "Feature_extration/extract_edges.hh"

@@ -1,7 +1,7 @@
 #ifndef extract_peak_h__
 #define extract_peak_h__
-
-#include "Feature_extration/Feature_extration_base.hh"
+#include "Feature_extration/feature.hh"
+#include <vector>
 
 
 inline feature extract_peak(const std::vector<int>& ADC_counts) {
