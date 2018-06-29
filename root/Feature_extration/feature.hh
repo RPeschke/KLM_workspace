@@ -23,19 +23,19 @@ inline TGraph* Draw(const feature& f,std::string options = "*") {
 
 }
 
-class feature_branche {
+class feature_branch {
 public:
-	inline feature_branche(TTree* out_tree,const std::string& name) {
+	inline feature_branch(TTree* out_tree,const std::string& name) {
 		m_feature = new feature();
 		out_tree->Branch((name + "_signal").c_str(), &m_feature->signal);
 		out_tree->Branch((name + "_time").c_str(), &m_feature->time);
 	}
-	inline ~feature_branche() {
+	inline ~feature_branch() {
 		delete m_feature;
 	}
 
 
-	friend inline feature_branche& operator<<(feature_branche& out, const feature& f) {
+	friend inline feature_branch& operator<<(feature_branch& out, const feature& f) {
 		if(f.signal < 2000){
 			out.m_feature->signal = f.signal;
 		}else {
