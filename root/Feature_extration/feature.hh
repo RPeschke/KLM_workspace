@@ -30,22 +30,17 @@ public:
 		out_tree->Branch((name + "_signal").c_str(), &m_feature->signal);
 		out_tree->Branch((name + "_time").c_str(), &m_feature->time);
 	}
-	inline ~feature_branch() {
+	inline virtual ~feature_branch() {
 		delete m_feature;
 	}
 
 
 	friend inline feature_branch& operator<<(feature_branch& out, const feature& f) {
-		if(f.signal < 2000){
+
 			out.m_feature->signal = f.signal;
-		}else {
-			out.m_feature->signal =-10;
-		}
-		if(f.time < 2000){
+
+
 			out.m_feature->time = f.time;
-		}else {
-			out.m_feature->time = -10;
-		}
 
 		
 		return out;
