@@ -17,7 +17,7 @@
 
 
 
-inline void Feature_extraction_read_file(const std::string& fileName, const std::string& TreeName) {
+inline void Feature_extraction_read_file(const std::string& fileName, const std::string& TreeName, const std::string& outputFileName) {
 
 	gInterpreter->ProcessLine(".L Feature_extration/KLM_Tree.cc");
 	TFile *_file0 = TFile::Open(fileName.c_str());
@@ -26,7 +26,7 @@ inline void Feature_extraction_read_file(const std::string& fileName, const std:
 	auto t1 = new  KLM_Tree(tree);
 
 
-	auto fout = new TFile("test.root", "recreate");
+	auto fout = new TFile(outputFileName.c_str(), "recreate");
 
 	auto out_tree = new TTree("features", "features");
 	feature_branch branch_peak(out_tree, "peak");

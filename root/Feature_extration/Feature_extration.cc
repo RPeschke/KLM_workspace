@@ -20,6 +20,6 @@
 void Feature_extration(){
 
 
-	Feature_extraction_read_file("C:/Users/Argg/Documents/Github/KLM/data/KLMS_0173.root", "tree");
+	Feature_extraction_read_file("C:/Users/Argg/Documents/Github/DataFileStorage/Cosmics/KLMS_0173a.root", "tree","test02.root");
   
 }
